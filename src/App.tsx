@@ -1,26 +1,15 @@
 import React from 'react';
 import Amplify, { Auth } from 'aws-amplify';
-import { AmplifyAuthContainer, AmplifyAuthenticator } from '@aws-amplify/ui-react';
-import { AuthState, onAuthUIStateChange } from '@aws-amplify/ui-components';
+import { Authenticator } from '@aws-amplify/ui-react';
 import './App.css';
 
 import awsconfig from './aws-exports';
 import { AxiosInstanceProvider } from './AxiosInstanceProvider';
 
-const config = awsconfig;
-Auth.configure(config);
+Auth.configure(awsconfig);
 Amplify.register(Auth);
 
 function App() {
-
-  const [authState, setAuthState] = React.useState<AuthState>();
-
-  React.useEffect(() => {
-      return onAuthUIStateChange((nextAuthState: AuthState, authData: object | undefined) => {
-          setAuthState(nextAuthState);
-      })
-  }, []);
-
 
   const getToken = async (): Promise<string> => {
       const token = Auth.currentSession().then(
@@ -31,26 +20,26 @@ function App() {
       return token.then(t => t.getJwtToken())
   };
 
-  const url = 'https://hg96i0rhk9.execute-api.us-east-1.amazonaws.com/prod'; // us-east-1
-  //const url = 'https://0gp9r0lnlg.execute-api.us-east-2.amazonaws.com/prod'; // us-east-2
+  const url = process.env.REACT_APP_API_GATEWAY_URL || '';
   const axiosInstance = new AxiosInstanceProvider(url, getToken).getInstance();
+  const [value, setValue] = React.useState<number>();
 
-  const getRandInt = async () => {
-    const result = await axiosInstance.get('/');
-    return result.data.body;
-  };
+  React.useEffect(() => {
+    const getRandInt = async () => {
+      const result = await axiosInstance.get('/');
+      setValue(result.data.body);
+    };
+    getRandInt()
+  }, [value]);
 
-  const content = authState === AuthState.SignedIn ?
-  (
-    <div>
-      {`Hello, World! Behold, a number: ${ getRandInt() }`}
-    </div>
-  ) : (
-    <AmplifyAuthContainer><AmplifyAuthenticator /> </AmplifyAuthContainer>
-  );
-  return (
-    { content }
-  );
+
+  const content = (
+    <Authenticator>
+      <div>
+        {`Hello, World! Behold, a number: ${ value }`}
+      </div>
+    </Authenticator>);
+  return content;
 }
 
 export default App;
